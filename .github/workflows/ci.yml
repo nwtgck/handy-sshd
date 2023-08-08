@@ -1,0 +1,31 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build_multi_platform:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: "1.20"
+      - name: Build for multi-platform
+        run: |
+          set -xeu
+          DIST=dist
+          mkdir $DIST
+          # (from: https://www.digitalocean.com/community/tutorials/how-to-build-go-executables-for-multiple-platforms-on-ubuntu-16-04)
+          platforms=("linux/amd64" "darwin/amd64" "linux/arm" "windows/amd64")
+          for platform in "${platforms[@]}"
+          do
+              platform_split=(${platform//\// })
+              export GOOS=${platform_split[0]}
+              export GOARCH=${platform_split[1]}
+              [ $GOOS = "windows" ] && EXTENSION='.exe' || EXTENSION=''
+              BUILD_PATH=handy-sshd-$GOOS-$GOARCH
+              mkdir $BUILD_PATH
+              # Build
+              CGO_ENABLED=0 go build -o "${BUILD_PATH}/handy-sshd${EXTENSION}" main/main.go
+          done
