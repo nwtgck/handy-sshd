@@ -1,4 +1,6 @@
 # handy-sshd
+[![CI](https://github.com/nwtgck/handy-sshd/actions/workflows/ci.yml/badge.svg)](https://github.com/nwtgck/handy-sshd/actions/workflows/ci.yml)
+
 Portable SSH Server
 
 ## Install on Ubuntu/Debian
@@ -40,7 +42,7 @@ handy-sshd --unix-socket /tmp/my-unix-socket --user "john:"
 
 ## --help
 
-```bash
+```
 Portable SSH server
 
 Usage:
