@@ -101,7 +101,11 @@ var RootCmd = &cobra.Command{
 			}
 			sshUsers = append(sshUsers, sshUser{name: splits[0], password: splits[1]})
 		}
-
+		if len(sshUsers) == 0 {
+			return fmt.Errorf(`No user specified
+e.g. --user "john:mypassword"
+e.g. --user "john:"`)
+		}
 		// (base: https://gist.github.com/jpillora/b480fde82bff51a06238)
 		sshConfig := &ssh.ServerConfig{
 			//Define a function to run when a client attempts a password login
