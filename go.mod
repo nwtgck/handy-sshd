@@ -9,7 +9,7 @@ require (
 	github.com/pkg/sftp v1.13.5
 	github.com/spf13/cobra v1.7.0
 	golang.org/x/crypto v0.12.0
-	golang.org/x/exp v0.0.0-20230809094429-853ea248256d
+	golang.org/x/exp v0.0.0-20230809150735-7b3493d9a819
 )
 
 require (
