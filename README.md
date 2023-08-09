@@ -22,3 +22,21 @@ handy-sshd -p 2222 --user "john:" --user "alice:"
 # Listen on unix domain socket
 handy-sshd --unix-socket /tmp/my-unix-socket --user "john:"
 ```
+
+## --help
+
+```bash
+Portable SSH server
+
+Usage:
+  handy-sshd [flags]
+
+Flags:
+  -h, --help                 help for handy-sshd
+      --host string          SSH server host (e.g. 127.0.0.1)
+  -p, --port uint16          SSH server port (default 2222)
+      --shell string         Shell
+      --unix-socket string   Unix-domain socket
+      --user stringArray     SSH user name (e.g. "john:mypassword")
+  -v, --version              show version
+```
