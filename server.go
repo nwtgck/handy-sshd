@@ -28,6 +28,13 @@ import (
 
 type Server struct {
 	Logger *slog.Logger
+
+	// Permissions
+	AllowTcpipForward bool
+	AllowDirectTcpip  bool
+	AllowExecute      bool // this should not be split into "allow-exec" and "allow-pty-req" for now because "pty-req" can be used not for shell execution.
+	AllowSftp         bool
+
 	// TODO: DNS server ?
 }
 
@@ -47,6 +54,10 @@ func (s *Server) handleChannel(shell string, newChannel ssh.NewChannel) {
 	case "session":
 		s.handleSession(shell, newChannel)
 	case "direct-tcpip":
+		if !s.AllowDirectTcpip {
+			newChannel.Reject(ssh.Prohibited, "direct-tcpip not allowed")
+			break
+		}
 		s.handleDirectTcpip(newChannel)
 	default:
 		newChannel.Reject(ssh.UnknownChannelType, fmt.Sprintf("unknown channel type: %s", newChannel.ChannelType()))
@@ -67,6 +78,11 @@ func (s *Server) handleSession(shell string, newChannel ssh.NewChannel) {
 	for req := range requests {
 		switch req.Type {
 		case "exec":
+			if !s.AllowExecute {
+				s.Logger.Info("execution not allowed (exec)")
+				req.Reply(false, nil)
+				break
+			}
 			s.handleExecRequest(req, connection)
 		case "shell":
 			// We only accept the default shell
@@ -75,6 +91,11 @@ func (s *Server) handleSession(shell string, newChannel ssh.NewChannel) {
 				req.Reply(true, nil)
 			}
 		case "pty-req":
+			if !s.AllowExecute {
+				s.Logger.Info("execution not allowed (pty-req)")
+				req.Reply(false, nil)
+				break
+			}
 			termLen := req.Payload[3]
 			w, h := parseDims(req.Payload[termLen+4:])
 			shf, err = s.createPty(shell, connection)
@@ -140,9 +161,17 @@ func (s *Server) handleExecRequest(req *ssh.Request, connection ssh.Channel) {
 
 func (s *Server) handleSessionSubSystem(req *ssh.Request, connection ssh.Channel) {
 	// https://github.com/pkg/sftp/blob/42e9800606febe03f9cdf1d1283719af4a5e6456/examples/go-sftp-server/main.go#L111
-	ok := string(req.Payload[4:]) == "sftp"
-	req.Reply(ok, nil)
+	if string(req.Payload[4:]) != "sftp" {
+		req.Reply(false, nil)
+		return
+	}
+	if !s.AllowSftp {
+		s.Logger.Info("sftp not allowed")
+		req.Reply(false, nil)
+		return
+	}
 
+	req.Reply(true, nil)
 	serverOptions := []sftp.ServerOption{
 		sftp.WithDebug(os.Stderr),
 	}
@@ -232,6 +261,11 @@ func (s *Server) HandleGlobalRequests(sshConn *ssh.ServerConn, reqs <-chan *ssh.
 	for req := range reqs {
 		switch req.Type {
 		case "tcpip-forward":
+			if !s.AllowTcpipForward {
+				s.Logger.Info("tcpip-forward not allowed")
+				req.Reply(false, nil)
+				break
+			}
 			s.handleTcpipForward(sshConn, req)
 		default:
 			// discard
