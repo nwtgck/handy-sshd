@@ -41,15 +41,13 @@ handy-sshd --unix-socket /tmp/my-unix-socket --user "john:"
 ```
 
 ## Permissions
-There are some permissions.
+**All permissions are allowed when nothing is specified.** There are some permissions.
 * --allow-direct-tcpip
 * --allow-execute
 * --allow-sftp
 * --allow-tcpip-forward
 
-All permissions are allowed when nothing is specified.
-
-Specifying `--allow-direct-tcpip` and `--allow-execute` allows only "direct-tcpip" and command executions.
+Specifying `--allow-direct-tcpip` and `--allow-execute` for example allows only them.
 The log shows "allowed: " and "NOT allowed: " permissions as follows.
 
 ```console
