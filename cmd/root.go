@@ -21,6 +21,21 @@ var flag struct {
 	sshUnixSocket string
 	sshShell      string
 	sshUsers      []string
+
+	allowTcpipForward bool
+	allowDirectTcpip  bool
+	allowExecute      bool
+	allowSftp         bool
+}
+
+var allPermissionFlags = []struct {
+	name    string
+	flagPtr *bool
+}{
+	{name: "tcpip-forward", flagPtr: &flag.allowTcpipForward},
+	{name: "direct-tcpip", flagPtr: &flag.allowDirectTcpip},
+	{name: "execute", flagPtr: &flag.allowExecute},
+	{name: "sftp", flagPtr: &flag.allowSftp},
 }
 
 type sshUser struct {
@@ -38,6 +53,12 @@ func init() {
 	RootCmd.PersistentFlags().StringVarP(&flag.sshShell, "shell", "", "", "Shell")
 	//RootCmd.PersistentFlags().StringVar(&flag.dnsServer, "dns-server", "", "DNS server (e.g. 1.1.1.1:53)")
 	RootCmd.PersistentFlags().StringArrayVarP(&flag.sshUsers, "user", "", nil, `SSH user name (e.g. "john:mypassword")`)
+
+	// Permission flags
+	RootCmd.PersistentFlags().BoolVarP(&flag.allowTcpipForward, "allow-tcpip-forward", "", false, "client can use remote forwarding")
+	RootCmd.PersistentFlags().BoolVarP(&flag.allowDirectTcpip, "allow-direct-tcpip", "", false, "client can use local forwarding and SOCKS proxy")
+	RootCmd.PersistentFlags().BoolVarP(&flag.allowExecute, "allow-execute", "", false, "client can use shell/interactive shell")
+	RootCmd.PersistentFlags().BoolVarP(&flag.allowSftp, "allow-sftp", "", false, "client can use SFTP and SSHFS")
 }
 
 var RootCmd = &cobra.Command{
@@ -51,8 +72,26 @@ var RootCmd = &cobra.Command{
 			return nil
 		}
 		logger := slog.Default()
+
+		// Allow all permissions if all permission is not set
+		{
+			allPermissionFalse := true
+			for _, permissionFlag := range allPermissionFlags {
+				allPermissionFalse = allPermissionFalse && !*permissionFlag.flagPtr
+			}
+			if allPermissionFalse {
+				for _, permissionFlag := range allPermissionFlags {
+					*permissionFlag.flagPtr = true
+				}
+			}
+		}
+
 		sshServer := &handy_sshd.Server{
-			Logger: logger,
+			Logger:            logger,
+			AllowTcpipForward: flag.allowTcpipForward,
+			AllowDirectTcpip:  flag.allowDirectTcpip,
+			AllowExecute:      flag.allowExecute,
+			AllowSftp:         flag.allowSftp,
 		}
 		var sshUsers []sshUser
 		for _, u := range flag.sshUsers {
@@ -109,6 +148,9 @@ var RootCmd = &cobra.Command{
 			logger.Info(fmt.Sprintf("listening on %s...", flag.sshUnixSocket))
 		}
 		defer ln.Close()
+
+		showPermissions(logger)
+
 		for {
 			conn, err := ln.Accept()
 			if err != nil {
@@ -121,9 +163,29 @@ var RootCmd = &cobra.Command{
 				conn.Close()
 				continue
 			}
-			logger.Info("new SSH connection", "client_version", string(sshConn.ClientVersion()))
+			logger.Info("new SSH connection", "remote_address", sshConn.RemoteAddr(), "client_version", string(sshConn.ClientVersion()))
 			go sshServer.HandleGlobalRequests(sshConn, reqs)
 			go sshServer.HandleChannels(flag.sshShell, chans)
 		}
 	},
+}
+
+func showPermissions(logger *slog.Logger) {
+	var allowedList []string
+	var notAllowedList []string
+	for _, permissionFlag := range allPermissionFlags {
+		if *permissionFlag.flagPtr {
+			allowedList = append(allowedList, `"`+permissionFlag.name+`"`)
+		} else {
+			notAllowedList = append(notAllowedList, `"`+permissionFlag.name+`"`)
+		}
+	}
+	showList := func(l []string) string {
+		if len(l) == 0 {
+			return "none"
+		}
+		return strings.Join(l, ", ")
+	}
+	logger.Info(fmt.Sprintf("allowed: %s", showList(allowedList)))
+	logger.Info(fmt.Sprintf("NOT allowed: %s", showList(notAllowedList)))
 }
