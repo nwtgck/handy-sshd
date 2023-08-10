@@ -45,11 +45,9 @@ func TestAllPermissionsAllowed(t *testing.T) {
 	}()
 	waitTCPServer(port)
 	sshClientConfig := &ssh.ClientConfig{
-		User: "john",
-		Auth: []ssh.AuthMethod{ssh.Password("mypassword")},
-		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-			return nil
-		},
+		User:            "john",
+		Auth:            []ssh.AuthMethod{ssh.Password("mypassword")},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
 
@@ -77,10 +75,8 @@ func TestEmptyPassword(t *testing.T) {
 	}()
 	waitTCPServer(port)
 	sshClientConfig := &ssh.ClientConfig{
-		User: "john",
-		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-			return nil
-		},
+		User:            "john",
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
 
@@ -133,11 +129,9 @@ func TestWrongPassword(t *testing.T) {
 	}()
 	waitTCPServer(port)
 	sshClientConfig := &ssh.ClientConfig{
-		User: "john",
-		Auth: []ssh.AuthMethod{ssh.Password("mywrongpassword")},
-		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-			return nil
-		},
+		User:            "john",
+		Auth:            []ssh.AuthMethod{ssh.Password("mywrongpassword")},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
 	_, err := ssh.Dial("tcp", address, sshClientConfig)
@@ -158,11 +152,9 @@ func TestAllowExecute(t *testing.T) {
 	}()
 	waitTCPServer(port)
 	sshClientConfig := &ssh.ClientConfig{
-		User: "john",
-		Auth: []ssh.AuthMethod{ssh.Password("mypassword")},
-		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-			return nil
-		},
+		User:            "john",
+		Auth:            []ssh.AuthMethod{ssh.Password("mypassword")},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
 	client, err := ssh.Dial("tcp", address, sshClientConfig)
@@ -189,11 +181,9 @@ func TestAllowTcpipForward(t *testing.T) {
 	}()
 	waitTCPServer(port)
 	sshClientConfig := &ssh.ClientConfig{
-		User: "john",
-		Auth: []ssh.AuthMethod{ssh.Password("mypassword")},
-		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-			return nil
-		},
+		User:            "john",
+		Auth:            []ssh.AuthMethod{ssh.Password("mypassword")},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
 	client, err := ssh.Dial("tcp", address, sshClientConfig)
@@ -220,11 +210,9 @@ func TestAllowDirectTcpip(t *testing.T) {
 	}()
 	waitTCPServer(port)
 	sshClientConfig := &ssh.ClientConfig{
-		User: "john",
-		Auth: []ssh.AuthMethod{ssh.Password("mypassword")},
-		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-			return nil
-		},
+		User:            "john",
+		Auth:            []ssh.AuthMethod{ssh.Password("mypassword")},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
 	client, err := ssh.Dial("tcp", address, sshClientConfig)
@@ -251,11 +239,9 @@ func TestAllowSftp(t *testing.T) {
 	}()
 	waitTCPServer(port)
 	sshClientConfig := &ssh.ClientConfig{
-		User: "john",
-		Auth: []ssh.AuthMethod{ssh.Password("mypassword")},
-		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-			return nil
-		},
+		User:            "john",
+		Auth:            []ssh.AuthMethod{ssh.Password("mypassword")},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
 	client, err := ssh.Dial("tcp", address, sshClientConfig)
