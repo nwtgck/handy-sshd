@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"github.com/pkg/sftp"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/ssh"
 	"io"
@@ -161,4 +162,17 @@ func assertNoRemotePortForwarding(t *testing.T, client *ssh.Client) {
 	_, err := client.Listen("tcp", "127.0.0.1:5678")
 	assert.Error(t, err)
 	assert.Equal(t, "ssh: tcpip-forward request denied by peer", err.Error())
+}
+
+func assertSftp(t *testing.T, client *ssh.Client) {
+	sftpClient, err := sftp.NewClient(client)
+	assert.NoError(t, err)
+	_, err = sftpClient.Getwd()
+	assert.NoError(t, err)
+}
+
+func assertNoSftp(t *testing.T, client *ssh.Client) {
+	_, err := sftp.NewClient(client)
+	assert.Error(t, err)
+	assert.Equal(t, "ssh: subsystem request failed", err.Error())
 }
