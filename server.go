@@ -293,6 +293,7 @@ func (s *Server) handleTcpipForward(sshConn *ssh.ServerConn, req *ssh.Request) {
 		req.Reply(false, nil)
 		return
 	}
+	req.Reply(true, nil)
 	go func() {
 		sshConn.Wait()
 		ln.Close()
