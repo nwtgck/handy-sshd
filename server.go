@@ -312,6 +312,14 @@ func (s *Server) handleTcpipForward(sshConn *ssh.ServerConn, req *ssh.Request) {
 		}
 		replyMsg.Addr = msg.Addr
 		replyMsg.Port = msg.Port
+		originatorAddr, originatorPortStr, err := net.SplitHostPort(conn.RemoteAddr().String())
+		if err == nil {
+			originatorPort, _ := strconv.Atoi(originatorPortStr)
+			replyMsg.OriginatorAddr = originatorAddr
+			replyMsg.OriginatorPort = uint32(originatorPort)
+		} else {
+			s.Logger.Error("failed to split remote address", "remote_address", conn.RemoteAddr())
+		}
 
 		go func() {
 			channel, reqs, err := sshConn.OpenChannel("forwarded-tcpip", ssh.Marshal(&replyMsg))

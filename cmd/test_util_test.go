@@ -135,27 +135,39 @@ func assertNoLocalPortForwarding(t *testing.T, client *ssh.Client) {
 	assert.Equal(t, "ssh: rejected: administratively prohibited (direct-tcpip not allowed)", err.Error())
 }
 
-func assertRemotePortForwardingTODO(t *testing.T, client *ssh.Client) {
+func assertRemotePortForwarding(t *testing.T, client *ssh.Client) {
 	remotePort := getAvailableTcpPort()
-	acceptedConnChan := make(chan net.Conn)
-	var _ = acceptedConnChan
 	ln, err := client.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(remotePort)))
-	var _ = ln
 	assert.NoError(t, err)
+	acceptedConnChan := make(chan net.Conn)
 	go func() {
-		//conn, err := ln.Accept()
-		//assert.NoError(t, err)
-		//acceptedConnChan <- conn
+		conn, err := ln.Accept()
+		assert.NoError(t, err)
+		acceptedConnChan <- conn
 	}()
-
 	conn, err := net.Dial("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(remotePort)))
 	assert.NoError(t, err)
 	defer conn.Close()
-
-	// FIXME: implement but the following suspends
-	//acceptedConn := <-acceptedConnChan
-	//defer acceptedConn.Close()
-	// TODO: conn <--> acceptedConn communication
+	acceptedConn := <-acceptedConnChan
+	defer acceptedConn.Close()
+	{
+		localToRemote := [3]byte{1, 2, 3}
+		_, err = conn.Write(localToRemote[:])
+		assert.NoError(t, err)
+		var buf [len(localToRemote)]byte
+		_, err = io.ReadFull(acceptedConn, buf[:])
+		assert.NoError(t, err)
+		assert.Equal(t, buf, localToRemote)
+	}
+	{
+		remoteToLocal := [4]byte{10, 20, 30, 40}
+		_, err = acceptedConn.Write(remoteToLocal[:])
+		assert.NoError(t, err)
+		var buf [len(remoteToLocal)]byte
+		_, err = io.ReadFull(conn, buf[:])
+		assert.NoError(t, err)
+		assert.Equal(t, buf, remoteToLocal)
+	}
 }
 
 func assertNoRemotePortForwarding(t *testing.T, client *ssh.Client) {
