@@ -3,12 +3,11 @@ name: CI
 on: [push]
 
 jobs:
-  build_multi_platform:
+  test:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v4
+      - uses: actions/setup-go@v4
         with:
           go-version: "1.20"
       - name: Build for multi-platform
@@ -29,3 +28,5 @@ jobs:
               # Build
               CGO_ENABLED=0 go build -o "${BUILD_PATH}/handy-sshd${EXTENSION}" main/main.go
           done
+      - name: Test
+        run: go test -v ./...

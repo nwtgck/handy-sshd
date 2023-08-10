@@ -267,6 +267,7 @@ func (s *Server) HandleGlobalRequests(sshConn *ssh.ServerConn, reqs <-chan *ssh.
 				break
 			}
 			s.handleTcpipForward(sshConn, req)
+		// TODO: support: streamlocal-forward@openssh.com https://github.com/golang/crypto/blob/master/ssh/streamlocal.go
 		default:
 			// discard
 			if req.WantReply {
@@ -292,6 +293,7 @@ func (s *Server) handleTcpipForward(sshConn *ssh.ServerConn, req *ssh.Request) {
 		req.Reply(false, nil)
 		return
 	}
+	req.Reply(true, nil)
 	go func() {
 		sshConn.Wait()
 		ln.Close()
