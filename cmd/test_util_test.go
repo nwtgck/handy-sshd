@@ -37,7 +37,16 @@ func assertExec(t *testing.T, client *ssh.Client) {
 	assert.NoError(t, err)
 	expectedWhoamiBytes, err := exec.Command("whoami").Output()
 	assert.NoError(t, err)
-	assert.Equal(t, string(whoamiBytes), string(expectedWhoamiBytes))
+	assert.Equal(t, string(expectedWhoamiBytes), string(whoamiBytes))
+}
+
+func assertNoExec(t *testing.T, client *ssh.Client) {
+	session, err := client.NewSession()
+	assert.NoError(t, err)
+	defer session.Close()
+	_, err = session.Output("whoami")
+	assert.Error(t, err)
+	assert.Equal(t, "ssh: command whoami failed", err.Error())
 }
 
 func assertLocalPortForwarding(t *testing.T, client *ssh.Client) {
@@ -79,6 +88,13 @@ func assertLocalPortForwarding(t *testing.T, client *ssh.Client) {
 	}
 }
 
+func assertNoLocalPortForwarding(t *testing.T, client *ssh.Client) {
+	raddr := &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 1234}
+	_, err := client.DialTCP("tcp", nil, raddr)
+	assert.Error(t, err)
+	assert.Equal(t, "ssh: rejected: administratively prohibited (direct-tcpip not allowed)", err.Error())
+}
+
 func assertRemotePortForwardingTODO(t *testing.T, client *ssh.Client) {
 	remotePort := getAvailableTcpPort()
 	acceptedConnChan := make(chan net.Conn)
@@ -100,4 +116,10 @@ func assertRemotePortForwardingTODO(t *testing.T, client *ssh.Client) {
 	//acceptedConn := <-acceptedConnChan
 	//defer acceptedConn.Close()
 	// TODO: conn <--> acceptedConn communication
+}
+
+func assertNoRemotePortForwarding(t *testing.T, client *ssh.Client) {
+	_, err := client.Listen("tcp", "127.0.0.1:5678")
+	assert.Error(t, err)
+	assert.Equal(t, "ssh: tcpip-forward request denied by peer", err.Error())
 }
