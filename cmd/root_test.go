@@ -57,10 +57,10 @@ func TestAllPermissionsAllowed(t *testing.T) {
 	assert.NoError(t, err)
 	defer client.Close()
 	assert.NoError(t, err)
-	assertExec(t, client)
-	assertLocalPortForwarding(t, client)
 	assertRemotePortForwardingTODO(t, client)
-	// TODO: pty
+	assertLocalPortForwarding(t, client)
+	assertExec(t, client)
+	assertPtyTerminal(t, client)
 	// TODO: sftp
 }
 
@@ -172,7 +172,7 @@ func TestAllowExecute(t *testing.T) {
 	assertNoRemotePortForwarding(t, client)
 	assertNoLocalPortForwarding(t, client)
 	assertExec(t, client)
-	// TODO: no pty
+	assertPtyTerminal(t, client)
 	// TODO: no sftp
 }
 
@@ -203,7 +203,7 @@ func TestAllowTcpipForward(t *testing.T) {
 	assertRemotePortForwardingTODO(t, client)
 	assertNoLocalPortForwarding(t, client)
 	assertNoExec(t, client)
-	// TODO: no pty
+	assertNoPtyTerminal(t, client)
 	// TODO: no sftp
 }
 
@@ -234,7 +234,7 @@ func TestAllowDirectTcpip(t *testing.T) {
 	assertNoRemotePortForwarding(t, client)
 	assertLocalPortForwarding(t, client)
 	assertNoExec(t, client)
-	// TODO: no pty
+	assertNoPtyTerminal(t, client)
 	// TODO: no sftp
 }
 

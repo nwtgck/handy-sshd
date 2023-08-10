@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/ssh"
 	"io"
@@ -8,6 +9,7 @@ import (
 	"os/exec"
 	"strconv"
 	"testing"
+	"time"
 )
 
 func getAvailableTcpPort() int {
@@ -47,6 +49,43 @@ func assertNoExec(t *testing.T, client *ssh.Client) {
 	_, err = session.Output("whoami")
 	assert.Error(t, err)
 	assert.Equal(t, "ssh: command whoami failed", err.Error())
+}
+
+func assertPtyTerminal(t *testing.T, client *ssh.Client) {
+	session, err := client.NewSession()
+	assert.NoError(t, err)
+	defer session.Close()
+
+	err = session.RequestPty("xterm", 100, 200, ssh.TerminalModes{})
+	assert.NoError(t, err)
+	stdin, err := session.StdinPipe()
+	assert.NoError(t, err)
+	_, err = stdin.Write([]byte("echo helloworldviapty\r"))
+	assert.NoError(t, err)
+	stdout, err := session.StdoutPipe()
+	assert.NoError(t, err)
+	stdoutBytesChan := make(chan []byte)
+	go func() {
+		var buff bytes.Buffer
+		_, err := io.Copy(&buff, stdout)
+		assert.NoError(t, err)
+		stdoutBytesChan <- buff.Bytes()
+	}()
+	err = session.Shell()
+	assert.NoError(t, err)
+	time.Sleep(1 * time.Second)
+	session.Close()
+	stdoutBytes := <-stdoutBytesChan
+	assert.Contains(t, string(stdoutBytes), "helloworldviapty")
+}
+
+func assertNoPtyTerminal(t *testing.T, client *ssh.Client) {
+	session, err := client.NewSession()
+	assert.NoError(t, err)
+	defer session.Close()
+	err = session.RequestPty("xterm", 100, 200, ssh.TerminalModes{})
+	assert.Error(t, err)
+	assert.Equal(t, "ssh: pty-req failed", err.Error())
 }
 
 func assertLocalPortForwarding(t *testing.T, client *ssh.Client) {
