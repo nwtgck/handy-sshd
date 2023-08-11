@@ -30,11 +30,12 @@ type Server struct {
 	Logger *slog.Logger
 
 	// Permissions
-	AllowTcpipForward      bool
-	AllowDirectTcpip       bool
-	AllowExecute           bool // this should not be split into "allow-exec" and "allow-pty-req" for now because "pty-req" can be used not for shell execution.
-	AllowSftp              bool
-	AllowDirectStreamlocal bool
+	AllowTcpipForward       bool
+	AllowDirectTcpip        bool
+	AllowExecute            bool // this should not be split into "allow-exec" and "allow-pty-req" for now because "pty-req" can be used not for shell execution.
+	AllowSftp               bool
+	AllowStreamlocalForward bool
+	AllowDirectStreamlocal  bool
 
 	// TODO: DNS server ?
 }
@@ -312,7 +313,13 @@ func (s *Server) HandleGlobalRequests(sshConn *ssh.ServerConn, reqs <-chan *ssh.
 				break
 			}
 			s.handleTcpipForward(sshConn, req)
-		// TODO: support: streamlocal-forward@openssh.com https://github.com/golang/crypto/blob/master/ssh/streamlocal.go
+		case "streamlocal-forward@openssh.com":
+			if !s.AllowStreamlocalForward {
+				s.Logger.Info("streamlocal-forward not allowed")
+				req.Reply(false, nil)
+				break
+			}
+			s.handleStreamlocalForward(sshConn, req)
 		default:
 			// discard
 			if req.WantReply {
@@ -347,6 +354,7 @@ func (s *Server) handleTcpipForward(sshConn *ssh.ServerConn, req *ssh.Request) {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
+			s.Logger.Info("failed to accept", "err", err)
 			return
 		}
 		var replyMsg struct {
@@ -368,6 +376,62 @@ func (s *Server) handleTcpipForward(sshConn *ssh.ServerConn, req *ssh.Request) {
 
 		go func() {
 			channel, reqs, err := sshConn.OpenChannel("forwarded-tcpip", ssh.Marshal(&replyMsg))
+			if err != nil {
+				req.Reply(false, nil)
+				conn.Close()
+				return
+			}
+			go ssh.DiscardRequests(reqs)
+			go func() {
+				io.Copy(channel, conn)
+				conn.Close()
+				channel.Close()
+			}()
+			go func() {
+				io.Copy(conn, channel)
+				conn.Close()
+				channel.Close()
+			}()
+		}()
+	}
+}
+
+// client side: https://github.com/golang/crypto/blob/b4ddeeda5bc71549846db71ba23e83ecb26f36ed/ssh/streamlocal.go#L34
+func (s *Server) handleStreamlocalForward(sshConn *ssh.ServerConn, req *ssh.Request) {
+	// https://github.com/openssh/openssh-portable/blob/f9f18006678d2eac8b0c5a5dddf17ab7c50d1e9f/PROTOCOL#L272
+	var msg struct {
+		SocketPath string
+	}
+	if err := ssh.Unmarshal(req.Payload, &msg); err != nil {
+		req.Reply(false, nil)
+		return
+	}
+	ln, err := net.Listen("unix", msg.SocketPath)
+	if err != nil {
+		req.Reply(false, nil)
+		return
+	}
+	req.Reply(true, nil)
+	go func() {
+		sshConn.Wait()
+		ln.Close()
+		s.Logger.Info("connection closed", "address", ln.Addr().String())
+	}()
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			s.Logger.Info("failed to accept", "err", err)
+			return
+		}
+		// https://github.com/openssh/openssh-portable/blob/f9f18006678d2eac8b0c5a5dddf17ab7c50d1e9f/PROTOCOL#L255
+		var replyMsg struct {
+			SocketPath string
+			Reserved   string
+		}
+		replyMsg.SocketPath = msg.SocketPath
+
+		go func() {
+			channel, reqs, err := sshConn.OpenChannel("forwarded-streamlocal@openssh.com", ssh.Marshal(&replyMsg))
 			if err != nil {
 				req.Reply(false, nil)
 				conn.Close()
