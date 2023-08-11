@@ -60,6 +60,7 @@ func TestAllPermissionsAllowed(t *testing.T) {
 	assertExec(t, client)
 	assertPtyTerminal(t, client)
 	assertSftp(t, client)
+	assertUnixRemotePortForwarding(t, client)
 	assertUnixLocalPortForwarding(t, client)
 }
 
@@ -167,6 +168,7 @@ func TestAllowExecute(t *testing.T) {
 	assertExec(t, client)
 	assertPtyTerminal(t, client)
 	assertNoSftp(t, client)
+	assertNoUnixRemotePortForwarding(t, client)
 	assertNoUnixLocalPortForwarding(t, client)
 }
 
@@ -197,6 +199,38 @@ func TestAllowTcpipForward(t *testing.T) {
 	assertNoExec(t, client)
 	assertNoPtyTerminal(t, client)
 	assertNoSftp(t, client)
+	assertNoUnixRemotePortForwarding(t, client)
+	assertNoUnixLocalPortForwarding(t, client)
+}
+
+func TestAllowStreamlocalForward(t *testing.T) {
+	rootCmd := RootCmd()
+	port := getAvailableTcpPort()
+	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypassword", "--allow-streamlocal-forward"})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		var stderrBuf bytes.Buffer
+		rootCmd.SetErr(&stderrBuf)
+		rootCmd.ExecuteContext(ctx)
+	}()
+	waitTCPServer(port)
+	sshClientConfig := &ssh.ClientConfig{
+		User:            "john",
+		Auth:            []ssh.AuthMethod{ssh.Password("mypassword")},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
+	client, err := ssh.Dial("tcp", address, sshClientConfig)
+	assert.NoError(t, err)
+	defer client.Close()
+	assert.NoError(t, err)
+	assertNoRemotePortForwarding(t, client)
+	assertNoLocalPortForwarding(t, client)
+	assertNoExec(t, client)
+	assertNoPtyTerminal(t, client)
+	assertNoSftp(t, client)
+	assertUnixRemotePortForwarding(t, client)
 	assertNoUnixLocalPortForwarding(t, client)
 }
 
@@ -227,6 +261,7 @@ func TestAllowDirectTcpip(t *testing.T) {
 	assertNoExec(t, client)
 	assertNoPtyTerminal(t, client)
 	assertNoSftp(t, client)
+	assertNoUnixRemotePortForwarding(t, client)
 	assertNoUnixLocalPortForwarding(t, client)
 }
 
@@ -257,6 +292,7 @@ func TestAllowDirectStreamlocal(t *testing.T) {
 	assertNoExec(t, client)
 	assertNoPtyTerminal(t, client)
 	assertNoSftp(t, client)
+	assertNoUnixRemotePortForwarding(t, client)
 	assertUnixLocalPortForwarding(t, client)
 }
 
@@ -286,5 +322,6 @@ func TestAllowSftp(t *testing.T) {
 	assertNoLocalPortForwarding(t, client)
 	assertNoExec(t, client)
 	assertNoPtyTerminal(t, client)
+	assertNoUnixRemotePortForwarding(t, client)
 	assertSftp(t, client)
 }
