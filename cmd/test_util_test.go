@@ -2,12 +2,15 @@ package cmd
 
 import (
 	"bytes"
+	"github.com/google/uuid"
 	"github.com/pkg/sftp"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"net"
+	"os"
 	"os/exec"
+	"path"
 	"strconv"
 	"testing"
 	"time"
@@ -133,6 +136,51 @@ func assertNoLocalPortForwarding(t *testing.T, client *ssh.Client) {
 	_, err := client.DialTCP("tcp", nil, raddr)
 	assert.Error(t, err)
 	assert.Equal(t, "ssh: rejected: administratively prohibited (direct-tcpip not allowed)", err.Error())
+}
+
+func assertUnixLocalPortForwarding(t *testing.T, client *ssh.Client) {
+	remoteUnixSocket := path.Join(os.TempDir(), "test-unix-socket-"+uuid.New().String())
+	acceptedConnChan := make(chan net.Conn)
+	{
+		ln, err := net.Listen("unix", remoteUnixSocket)
+		assert.NoError(t, err)
+		defer os.Remove(remoteUnixSocket)
+		go func() {
+			conn, err := ln.Accept()
+			assert.NoError(t, err)
+			acceptedConnChan <- conn
+		}()
+	}
+	conn, err := client.Dial("unix", remoteUnixSocket)
+	assert.NoError(t, err)
+	defer conn.Close()
+	acceptedConn := <-acceptedConnChan
+	defer acceptedConn.Close()
+	{
+		localToRemote := [3]byte{1, 2, 3}
+		_, err = conn.Write(localToRemote[:])
+		assert.NoError(t, err)
+		var buf [len(localToRemote)]byte
+		_, err = io.ReadFull(acceptedConn, buf[:])
+		assert.NoError(t, err)
+		assert.Equal(t, buf, localToRemote)
+	}
+	{
+		remoteToLocal := [4]byte{10, 20, 30, 40}
+		_, err = acceptedConn.Write(remoteToLocal[:])
+		assert.NoError(t, err)
+		var buf [len(remoteToLocal)]byte
+		_, err = io.ReadFull(conn, buf[:])
+		assert.NoError(t, err)
+		assert.Equal(t, buf, remoteToLocal)
+	}
+}
+
+func assertNoUnixLocalPortForwarding(t *testing.T, client *ssh.Client) {
+	remoteUnixSocket := path.Join(os.TempDir(), "test-unix-socket-"+uuid.New().String())
+	_, err := client.Dial("unix", remoteUnixSocket)
+	assert.Error(t, err)
+	assert.Equal(t, "ssh: rejected: administratively prohibited (direct-streamlocal (Unix domain socket) not allowed)", err.Error())
 }
 
 func assertRemotePortForwarding(t *testing.T, client *ssh.Client) {
