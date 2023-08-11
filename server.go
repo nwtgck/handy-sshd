@@ -122,6 +122,8 @@ func (s *Server) handleSession(shell string, newChannel ssh.NewChannel) {
 			}
 		case "subsystem":
 			s.handleSessionSubSystem(req, connection)
+		default:
+			s.Logger.Info("unknown request", "req_type", req.Type)
 		}
 	}
 }
@@ -312,14 +314,20 @@ func (s *Server) HandleGlobalRequests(sshConn *ssh.ServerConn, reqs <-chan *ssh.
 				req.Reply(false, nil)
 				break
 			}
-			s.handleTcpipForward(sshConn, req)
+			go func() {
+				s.handleTcpipForward(sshConn, req)
+			}()
 		case "streamlocal-forward@openssh.com":
 			if !s.AllowStreamlocalForward {
 				s.Logger.Info("streamlocal-forward not allowed")
 				req.Reply(false, nil)
 				break
 			}
-			s.handleStreamlocalForward(sshConn, req)
+			go func() {
+				s.handleStreamlocalForward(sshConn, req)
+			}()
+		// TODO: support cancel-tcpip-forward
+		// TODO: support cancel-streamlocal-forward@openssh.com
 		default:
 			// discard
 			if req.WantReply {
