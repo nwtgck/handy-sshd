@@ -30,10 +30,12 @@ type Server struct {
 	Logger *slog.Logger
 
 	// Permissions
-	AllowTcpipForward bool
-	AllowDirectTcpip  bool
-	AllowExecute      bool // this should not be split into "allow-exec" and "allow-pty-req" for now because "pty-req" can be used not for shell execution.
-	AllowSftp         bool
+	AllowTcpipForward       bool
+	AllowDirectTcpip        bool
+	AllowExecute            bool // this should not be split into "allow-exec" and "allow-pty-req" for now because "pty-req" can be used not for shell execution.
+	AllowSftp               bool
+	AllowStreamlocalForward bool
+	AllowDirectStreamlocal  bool
 
 	// TODO: DNS server ?
 }
@@ -59,6 +61,12 @@ func (s *Server) handleChannel(shell string, newChannel ssh.NewChannel) {
 			break
 		}
 		s.handleDirectTcpip(newChannel)
+	case "direct-streamlocal@openssh.com":
+		if !s.AllowDirectStreamlocal {
+			newChannel.Reject(ssh.Prohibited, "direct-streamlocal (Unix domain socket) not allowed")
+			break
+		}
+		s.handleDirectStreamlocal(newChannel)
 	default:
 		newChannel.Reject(ssh.UnknownChannelType, fmt.Sprintf("unknown channel type: %s", newChannel.ChannelType()))
 	}
@@ -114,6 +122,8 @@ func (s *Server) handleSession(shell string, newChannel ssh.NewChannel) {
 			}
 		case "subsystem":
 			s.handleSessionSubSystem(req, connection)
+		default:
+			s.Logger.Info("unknown request", "req_type", req.Type)
 		}
 	}
 }
@@ -197,7 +207,7 @@ func (s *Server) handleDirectTcpip(newChannel ssh.NewChannel) {
 		SourcePort uint32
 	}
 	if err := ssh.Unmarshal(newChannel.ExtraData(), &msg); err != nil {
-		s.Logger.Info("failed to parse message", "err", err)
+		s.Logger.Info("failed to parse direct-tcpip message", "err", err)
 		return
 	}
 	channel, reqs, err := newChannel.Accept()
@@ -208,6 +218,44 @@ func (s *Server) handleDirectTcpip(newChannel ssh.NewChannel) {
 	go ssh.DiscardRequests(reqs)
 	raddr := net.JoinHostPort(msg.RemoteAddr, strconv.Itoa(int(msg.RemotePort)))
 	conn, err := net.Dial("tcp", raddr)
+	if err != nil {
+		s.Logger.Info("failed to dial", "err", err)
+		channel.Close()
+		return
+	}
+	var closeOnce sync.Once
+	closer := func() {
+		channel.Close()
+		conn.Close()
+	}
+	go func() {
+		io.Copy(channel, conn)
+		closeOnce.Do(closer)
+	}()
+	io.Copy(conn, channel)
+	closeOnce.Do(closer)
+	return
+}
+
+// client side: https://github.com/golang/crypto/blob/b4ddeeda5bc71549846db71ba23e83ecb26f36ed/ssh/streamlocal.go#L52
+func (s *Server) handleDirectStreamlocal(newChannel ssh.NewChannel) {
+	// https://github.com/openssh/openssh-portable/blob/f9f18006678d2eac8b0c5a5dddf17ab7c50d1e9f/PROTOCOL#L237
+	var msg struct {
+		SocketPath string
+		Reserved0  string
+		Reserved1  uint32
+	}
+	if err := ssh.Unmarshal(newChannel.ExtraData(), &msg); err != nil {
+		s.Logger.Info("failed to parse direct-streamlocal message", "err", err)
+		return
+	}
+	channel, reqs, err := newChannel.Accept()
+	if err != nil {
+		s.Logger.Info("failed to accept", "err", err)
+		return
+	}
+	go ssh.DiscardRequests(reqs)
+	conn, err := net.Dial("unix", msg.SocketPath)
 	if err != nil {
 		s.Logger.Info("failed to dial", "err", err)
 		channel.Close()
@@ -266,7 +314,20 @@ func (s *Server) HandleGlobalRequests(sshConn *ssh.ServerConn, reqs <-chan *ssh.
 				req.Reply(false, nil)
 				break
 			}
-			s.handleTcpipForward(sshConn, req)
+			go func() {
+				s.handleTcpipForward(sshConn, req)
+			}()
+		case "streamlocal-forward@openssh.com":
+			if !s.AllowStreamlocalForward {
+				s.Logger.Info("streamlocal-forward not allowed")
+				req.Reply(false, nil)
+				break
+			}
+			go func() {
+				s.handleStreamlocalForward(sshConn, req)
+			}()
+		// TODO: support cancel-tcpip-forward
+		// TODO: support cancel-streamlocal-forward@openssh.com
 		default:
 			// discard
 			if req.WantReply {
@@ -292,6 +353,7 @@ func (s *Server) handleTcpipForward(sshConn *ssh.ServerConn, req *ssh.Request) {
 		req.Reply(false, nil)
 		return
 	}
+	req.Reply(true, nil)
 	go func() {
 		sshConn.Wait()
 		ln.Close()
@@ -300,6 +362,7 @@ func (s *Server) handleTcpipForward(sshConn *ssh.ServerConn, req *ssh.Request) {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
+			s.Logger.Info("failed to accept", "err", err)
 			return
 		}
 		var replyMsg struct {
@@ -310,9 +373,73 @@ func (s *Server) handleTcpipForward(sshConn *ssh.ServerConn, req *ssh.Request) {
 		}
 		replyMsg.Addr = msg.Addr
 		replyMsg.Port = msg.Port
+		originatorAddr, originatorPortStr, err := net.SplitHostPort(conn.RemoteAddr().String())
+		if err == nil {
+			originatorPort, _ := strconv.Atoi(originatorPortStr)
+			replyMsg.OriginatorAddr = originatorAddr
+			replyMsg.OriginatorPort = uint32(originatorPort)
+		} else {
+			s.Logger.Error("failed to split remote address", "remote_address", conn.RemoteAddr())
+		}
 
 		go func() {
 			channel, reqs, err := sshConn.OpenChannel("forwarded-tcpip", ssh.Marshal(&replyMsg))
+			if err != nil {
+				req.Reply(false, nil)
+				conn.Close()
+				return
+			}
+			go ssh.DiscardRequests(reqs)
+			go func() {
+				io.Copy(channel, conn)
+				conn.Close()
+				channel.Close()
+			}()
+			go func() {
+				io.Copy(conn, channel)
+				conn.Close()
+				channel.Close()
+			}()
+		}()
+	}
+}
+
+// client side: https://github.com/golang/crypto/blob/b4ddeeda5bc71549846db71ba23e83ecb26f36ed/ssh/streamlocal.go#L34
+func (s *Server) handleStreamlocalForward(sshConn *ssh.ServerConn, req *ssh.Request) {
+	// https://github.com/openssh/openssh-portable/blob/f9f18006678d2eac8b0c5a5dddf17ab7c50d1e9f/PROTOCOL#L272
+	var msg struct {
+		SocketPath string
+	}
+	if err := ssh.Unmarshal(req.Payload, &msg); err != nil {
+		req.Reply(false, nil)
+		return
+	}
+	ln, err := net.Listen("unix", msg.SocketPath)
+	if err != nil {
+		req.Reply(false, nil)
+		return
+	}
+	req.Reply(true, nil)
+	go func() {
+		sshConn.Wait()
+		ln.Close()
+		s.Logger.Info("connection closed", "address", ln.Addr().String())
+	}()
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			s.Logger.Info("failed to accept", "err", err)
+			return
+		}
+		// https://github.com/openssh/openssh-portable/blob/f9f18006678d2eac8b0c5a5dddf17ab7c50d1e9f/PROTOCOL#L255
+		var replyMsg struct {
+			SocketPath string
+			Reserved   string
+		}
+		replyMsg.SocketPath = msg.SocketPath
+
+		go func() {
+			channel, reqs, err := sshConn.OpenChannel("forwarded-streamlocal@openssh.com", ssh.Marshal(&replyMsg))
 			if err != nil {
 				req.Reply(false, nil)
 				conn.Close()
