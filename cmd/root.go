@@ -22,11 +22,12 @@ type flagType struct {
 	sshShell      string
 	sshUsers      []string
 
-	allowTcpipForward      bool
-	allowDirectTcpip       bool
-	allowExecute           bool
-	allowSftp              bool
-	allowDirectStreamlocal bool
+	allowTcpipForward       bool
+	allowDirectTcpip        bool
+	allowExecute            bool
+	allowSftp               bool
+	allowStreamlocalForward bool
+	allowDirectStreamlocal  bool
 }
 
 type permissionFlagType = struct {
@@ -50,6 +51,7 @@ func RootCmd() *cobra.Command {
 		{name: "direct-tcpip", flagPtr: &flag.allowDirectTcpip},
 		{name: "execute", flagPtr: &flag.allowExecute},
 		{name: "sftp", flagPtr: &flag.allowSftp},
+		{name: "streamlocal-forward", flagPtr: &flag.allowStreamlocalForward},
 		{name: "direct-streamlocal", flagPtr: &flag.allowDirectStreamlocal},
 	}
 	rootCmd := cobra.Command{
@@ -76,6 +78,7 @@ func RootCmd() *cobra.Command {
 	rootCmd.PersistentFlags().BoolVarP(&flag.allowDirectTcpip, "allow-direct-tcpip", "", false, "client can use local forwarding and SOCKS proxy")
 	rootCmd.PersistentFlags().BoolVarP(&flag.allowExecute, "allow-execute", "", false, "client can use shell/interactive shell")
 	rootCmd.PersistentFlags().BoolVarP(&flag.allowSftp, "allow-sftp", "", false, "client can use SFTP and SSHFS")
+	rootCmd.PersistentFlags().BoolVarP(&flag.allowStreamlocalForward, "allow-streamlocal-forward", "", false, "client can use Unix domain socket remote forwarding")
 	rootCmd.PersistentFlags().BoolVarP(&flag.allowDirectStreamlocal, "allow-direct-streamlocal", "", false, "client can use Unix domain socket local forwarding")
 
 	return &rootCmd
@@ -102,12 +105,13 @@ func rootRunEWithExtra(cmd *cobra.Command, args []string, flag *flagType, allPer
 	}
 
 	sshServer := &handy_sshd.Server{
-		Logger:                 logger,
-		AllowTcpipForward:      flag.allowTcpipForward,
-		AllowDirectTcpip:       flag.allowDirectTcpip,
-		AllowExecute:           flag.allowExecute,
-		AllowSftp:              flag.allowSftp,
-		AllowDirectStreamlocal: flag.allowDirectStreamlocal,
+		Logger:                  logger,
+		AllowTcpipForward:       flag.allowTcpipForward,
+		AllowDirectTcpip:        flag.allowDirectTcpip,
+		AllowExecute:            flag.allowExecute,
+		AllowSftp:               flag.allowSftp,
+		AllowStreamlocalForward: flag.allowStreamlocalForward,
+		AllowDirectStreamlocal:  flag.allowDirectStreamlocal,
 	}
 	var sshUsers []sshUser
 	for _, u := range flag.sshUsers {

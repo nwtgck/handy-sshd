@@ -187,6 +187,7 @@ func assertRemotePortForwarding(t *testing.T, client *ssh.Client) {
 	remotePort := getAvailableTcpPort()
 	ln, err := client.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(remotePort)))
 	assert.NoError(t, err)
+	defer ln.Close()
 	acceptedConnChan := make(chan net.Conn)
 	go func() {
 		conn, err := ln.Accept()
@@ -222,6 +223,50 @@ func assertNoRemotePortForwarding(t *testing.T, client *ssh.Client) {
 	_, err := client.Listen("tcp", "127.0.0.1:5678")
 	assert.Error(t, err)
 	assert.Equal(t, "ssh: tcpip-forward request denied by peer", err.Error())
+}
+
+func assertUnixRemotePortForwarding(t *testing.T, client *ssh.Client) {
+	remoteUnixSocket := path.Join(os.TempDir(), "test-unix-socket-"+uuid.New().String())
+	ln, err := client.ListenUnix(remoteUnixSocket)
+	assert.NoError(t, err)
+	defer os.Remove(remoteUnixSocket)
+	defer ln.Close()
+	acceptedConnChan := make(chan net.Conn)
+	go func() {
+		conn, err := ln.Accept()
+		assert.NoError(t, err)
+		acceptedConnChan <- conn
+	}()
+	conn, err := net.Dial("unix", remoteUnixSocket)
+	assert.NoError(t, err)
+	defer conn.Close()
+	acceptedConn := <-acceptedConnChan
+	defer acceptedConn.Close()
+	{
+		localToRemote := [3]byte{1, 2, 3}
+		_, err = conn.Write(localToRemote[:])
+		assert.NoError(t, err)
+		var buf [len(localToRemote)]byte
+		_, err = io.ReadFull(acceptedConn, buf[:])
+		assert.NoError(t, err)
+		assert.Equal(t, buf, localToRemote)
+	}
+	{
+		remoteToLocal := [4]byte{10, 20, 30, 40}
+		_, err = acceptedConn.Write(remoteToLocal[:])
+		assert.NoError(t, err)
+		var buf [len(remoteToLocal)]byte
+		_, err = io.ReadFull(conn, buf[:])
+		assert.NoError(t, err)
+		assert.Equal(t, buf, remoteToLocal)
+	}
+}
+
+func assertNoUnixRemotePortForwarding(t *testing.T, client *ssh.Client) {
+	remoteUnixSocket := path.Join(os.TempDir(), "test-unix-socket-"+uuid.New().String())
+	_, err := client.ListenUnix(remoteUnixSocket)
+	assert.Error(t, err)
+	assert.Equal(t, "ssh: streamlocal-forward@openssh.com request denied by peer", err.Error())
 }
 
 func assertSftp(t *testing.T, client *ssh.Client) {
