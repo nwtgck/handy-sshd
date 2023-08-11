@@ -123,7 +123,7 @@ func (s *Server) handleSession(shell string, newChannel ssh.NewChannel) {
 		case "subsystem":
 			s.handleSessionSubSystem(req, connection)
 		default:
-			s.Logger.Info("unknown request", "req_type", req.Type)
+			s.Logger.Info("unsupported request", "req_type", req.Type)
 		}
 	}
 }

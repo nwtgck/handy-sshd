@@ -59,27 +59,36 @@ func RootCmd() *cobra.Command {
 		Short:        "handy-sshd",
 		Long:         "Portable SSH server",
 		SilenceUsage: true,
+		Example: `# Listen on 2222 and accept user name "john" with password "mypass"
+handy-sshd -u john:mypass
+
+# Listen on 22 and accept the user without password
+handy-sshd -p 22 -u john:
+
+Permissions:
+All permissions are allowed by default.
+For example, specifying --allow-direct-tcpip and --allow-execute allows only them.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return rootRunEWithExtra(cmd, args, &flag, allPermissionFlags)
 		},
 	}
 
 	rootCmd.PersistentFlags().BoolVarP(&flag.showsVersion, "version", "v", false, "show version")
-	rootCmd.PersistentFlags().StringVarP(&flag.sshHost, "host", "", "", "SSH server host (e.g. 127.0.0.1)")
-	rootCmd.PersistentFlags().Uint16VarP(&flag.sshPort, "port", "p", 2222, "SSH server port")
+	rootCmd.PersistentFlags().StringVarP(&flag.sshHost, "host", "", "", "SSH server host to listen (e.g. 127.0.0.1)")
+	rootCmd.PersistentFlags().Uint16VarP(&flag.sshPort, "port", "p", 2222, "port to listen")
 	// NOTE: long name 'unix-socket' is from curl (ref: https://curl.se/docs/manpage.html)
-	rootCmd.PersistentFlags().StringVarP(&flag.sshUnixSocket, "unix-socket", "", "", "Unix domain socket")
+	rootCmd.PersistentFlags().StringVarP(&flag.sshUnixSocket, "unix-socket", "", "", "Unix domain socket to listen")
 	rootCmd.PersistentFlags().StringVarP(&flag.sshShell, "shell", "", "", "Shell")
 	//rootCmd.PersistentFlags().StringVar(&flag.dnsServer, "dns-server", "", "DNS server (e.g. 1.1.1.1:53)")
-	rootCmd.PersistentFlags().StringArrayVarP(&flag.sshUsers, "user", "", nil, `SSH user name (e.g. "john:mypassword")`)
+	rootCmd.PersistentFlags().StringArrayVarP(&flag.sshUsers, "user", "u", nil, `SSH user name (e.g. "john:mypassword")`)
 
 	// Permission flags
-	rootCmd.PersistentFlags().BoolVarP(&flag.allowTcpipForward, "allow-tcpip-forward", "", false, "client can use remote forwarding")
-	rootCmd.PersistentFlags().BoolVarP(&flag.allowDirectTcpip, "allow-direct-tcpip", "", false, "client can use local forwarding and SOCKS proxy")
+	rootCmd.PersistentFlags().BoolVarP(&flag.allowTcpipForward, "allow-tcpip-forward", "", false, "client can use remote forwarding (ssh -R)")
+	rootCmd.PersistentFlags().BoolVarP(&flag.allowDirectTcpip, "allow-direct-tcpip", "", false, "client can use local forwarding (ssh -L) and SOCKS proxy (ssh -D)")
 	rootCmd.PersistentFlags().BoolVarP(&flag.allowExecute, "allow-execute", "", false, "client can use shell/interactive shell")
 	rootCmd.PersistentFlags().BoolVarP(&flag.allowSftp, "allow-sftp", "", false, "client can use SFTP and SSHFS")
-	rootCmd.PersistentFlags().BoolVarP(&flag.allowStreamlocalForward, "allow-streamlocal-forward", "", false, "client can use Unix domain socket remote forwarding")
-	rootCmd.PersistentFlags().BoolVarP(&flag.allowDirectStreamlocal, "allow-direct-streamlocal", "", false, "client can use Unix domain socket local forwarding")
+	rootCmd.PersistentFlags().BoolVarP(&flag.allowStreamlocalForward, "allow-streamlocal-forward", "", false, "client can use Unix domain socket remote forwarding (ssh -R)")
+	rootCmd.PersistentFlags().BoolVarP(&flag.allowDirectStreamlocal, "allow-direct-streamlocal", "", false, "client can use Unix domain socket local forwarding (ssh -L)")
 
 	return &rootCmd
 }
