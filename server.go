@@ -30,10 +30,11 @@ type Server struct {
 	Logger *slog.Logger
 
 	// Permissions
-	AllowTcpipForward bool
-	AllowDirectTcpip  bool
-	AllowExecute      bool // this should not be split into "allow-exec" and "allow-pty-req" for now because "pty-req" can be used not for shell execution.
-	AllowSftp         bool
+	AllowTcpipForward      bool
+	AllowDirectTcpip       bool
+	AllowExecute           bool // this should not be split into "allow-exec" and "allow-pty-req" for now because "pty-req" can be used not for shell execution.
+	AllowSftp              bool
+	AllowDirectStreamlocal bool
 
 	// TODO: DNS server ?
 }
@@ -59,6 +60,12 @@ func (s *Server) handleChannel(shell string, newChannel ssh.NewChannel) {
 			break
 		}
 		s.handleDirectTcpip(newChannel)
+	case "direct-streamlocal@openssh.com":
+		if !s.AllowDirectStreamlocal {
+			newChannel.Reject(ssh.Prohibited, "direct-streamlocal (Unix domain socket) not allowed")
+			break
+		}
+		s.handleDirectStreamlocal(newChannel)
 	default:
 		newChannel.Reject(ssh.UnknownChannelType, fmt.Sprintf("unknown channel type: %s", newChannel.ChannelType()))
 	}
@@ -197,7 +204,7 @@ func (s *Server) handleDirectTcpip(newChannel ssh.NewChannel) {
 		SourcePort uint32
 	}
 	if err := ssh.Unmarshal(newChannel.ExtraData(), &msg); err != nil {
-		s.Logger.Info("failed to parse message", "err", err)
+		s.Logger.Info("failed to parse direct-tcpip message", "err", err)
 		return
 	}
 	channel, reqs, err := newChannel.Accept()
@@ -208,6 +215,44 @@ func (s *Server) handleDirectTcpip(newChannel ssh.NewChannel) {
 	go ssh.DiscardRequests(reqs)
 	raddr := net.JoinHostPort(msg.RemoteAddr, strconv.Itoa(int(msg.RemotePort)))
 	conn, err := net.Dial("tcp", raddr)
+	if err != nil {
+		s.Logger.Info("failed to dial", "err", err)
+		channel.Close()
+		return
+	}
+	var closeOnce sync.Once
+	closer := func() {
+		channel.Close()
+		conn.Close()
+	}
+	go func() {
+		io.Copy(channel, conn)
+		closeOnce.Do(closer)
+	}()
+	io.Copy(conn, channel)
+	closeOnce.Do(closer)
+	return
+}
+
+// client side: https://github.com/golang/crypto/blob/b4ddeeda5bc71549846db71ba23e83ecb26f36ed/ssh/streamlocal.go#L52
+func (s *Server) handleDirectStreamlocal(newChannel ssh.NewChannel) {
+	// https://github.com/openssh/openssh-portable/blob/f9f18006678d2eac8b0c5a5dddf17ab7c50d1e9f/PROTOCOL#L237
+	var msg struct {
+		SocketPath string
+		Reserved0  string
+		Reserved1  uint32
+	}
+	if err := ssh.Unmarshal(newChannel.ExtraData(), &msg); err != nil {
+		s.Logger.Info("failed to parse direct-streamlocal message", "err", err)
+		return
+	}
+	channel, reqs, err := newChannel.Accept()
+	if err != nil {
+		s.Logger.Info("failed to accept", "err", err)
+		return
+	}
+	go ssh.DiscardRequests(reqs)
+	conn, err := net.Dial("unix", msg.SocketPath)
 	if err != nil {
 		s.Logger.Info("failed to dial", "err", err)
 		channel.Close()
