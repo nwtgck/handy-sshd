@@ -41,20 +41,29 @@ handy-sshd --unix-socket /tmp/my-unix-socket --user "john:"
 ```
 
 ## Permissions
-**All permissions are allowed when nothing is specified.** There are some permissions.
+There are several permissions:
+* --allow-direct-streamlocal
 * --allow-direct-tcpip
 * --allow-execute
 * --allow-sftp
 * --allow-tcpip-forward
 
-Specifying `--allow-direct-tcpip` and `--allow-execute` for example allows only them.
-The log shows "allowed: " and "NOT allowed: " permissions as follows.
+**All permissions are allowed when nothing is specified.** The log shows "allowed: " and "NOT allowed: " permissions as follows:
+
+```console
+$ handy-sshd --user "john:"
+2023/08/11 09:42:05 INFO listening on :2222...
+2023/08/11 09:42:05 INFO allowed: "tcpip-forward", "direct-tcpip", "execute", "sftp", "direct-streamlocal"
+2023/08/11 09:42:05 INFO NOT allowed: none
+```
+
+For example, specifying `--allow-direct-tcpip` and `--allow-execute` allows only them:
 
 ```console
 $ handy-sshd --user "john:" --allow-direct-tcpip --allow-execute
-2023/08/09 20:49:35 INFO listening on :2222...
-2023/08/09 20:49:35 INFO allowed: "direct-tcpip", "execute"
-2023/08/09 20:49:35 INFO NOT allowed: "tcpip-forward", "sftp"
+2023/08/11 09:38:58 INFO listening on :2222...
+2023/08/11 09:38:58 INFO allowed: "direct-tcpip", "execute"
+2023/08/11 09:38:58 INFO NOT allowed: "tcpip-forward", "sftp", "direct-streamlocal"
 ```
 
 ## --help
@@ -66,15 +75,16 @@ Usage:
   handy-sshd [flags]
 
 Flags:
-      --allow-direct-tcpip    client can use local forwarding and SOCKS proxy
-      --allow-execute         client can use shell/interactive shell
-      --allow-sftp            client can use SFTP and SSHFS
-      --allow-tcpip-forward   client can use remote forwarding
-  -h, --help                  help for handy-sshd
-      --host string           SSH server host (e.g. 127.0.0.1)
-  -p, --port uint16           SSH server port (default 2222)
-      --shell string          Shell
-      --unix-socket string    Unix-domain socket
-      --user stringArray      SSH user name (e.g. "john:mypassword")
-  -v, --version               show version
+      --allow-direct-streamlocal   client can use Unix domain socket local forwarding
+      --allow-direct-tcpip         client can use local forwarding and SOCKS proxy
+      --allow-execute              client can use shell/interactive shell
+      --allow-sftp                 client can use SFTP and SSHFS
+      --allow-tcpip-forward        client can use remote forwarding
+  -h, --help                       help for handy-sshd
+      --host string                SSH server host (e.g. 127.0.0.1)
+  -p, --port uint16                SSH server port (default 2222)
+      --shell string               Shell
+      --unix-socket string         Unix domain socket
+      --user stringArray           SSH user name (e.g. "john:mypassword")
+  -v, --version                    show version
 ```
