@@ -110,6 +110,6 @@ Flags:
   -p, --port uint16                 port to listen (default 2222)
       --shell string                Shell
       --unix-socket string          Unix domain socket to listen
-  -u, --user stringArray            SSH user name (e.g. "john:mypassword")
+  -u, --user stringArray            SSH user name (e.g. "john:mypass")
   -v, --version                     show version
 ```

@@ -27,7 +27,7 @@ func TestZeroUsers(t *testing.T) {
 	rootCmd.SetErr(&stderrBuf)
 	assert.Error(t, rootCmd.Execute())
 	assert.Equal(t, `Error: No user specified
-e.g. --user "john:mypassword"
+e.g. --user "john:mypass"
 e.g. --user "john:"
 `, stderrBuf.String())
 }
@@ -35,7 +35,7 @@ e.g. --user "john:"
 func TestAllPermissionsAllowed(t *testing.T) {
 	rootCmd := RootCmd()
 	port := getAvailableTcpPort()
-	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypassword"})
+	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypass"})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -46,7 +46,7 @@ func TestAllPermissionsAllowed(t *testing.T) {
 	waitTCPServer(port)
 	sshClientConfig := &ssh.ClientConfig{
 		User:            "john",
-		Auth:            []ssh.AuthMethod{ssh.Password("mypassword")},
+		Auth:            []ssh.AuthMethod{ssh.Password("mypass")},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
@@ -90,7 +90,7 @@ func TestEmptyPassword(t *testing.T) {
 func TestMultipleUsers(t *testing.T) {
 	rootCmd := RootCmd()
 	port := getAvailableTcpPort()
-	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypassword1", "--user", "alex:mypassword2"})
+	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypass1", "--user", "alex:mypass2"})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -104,7 +104,7 @@ func TestMultipleUsers(t *testing.T) {
 	for _, user := range []struct {
 		name     string
 		password string
-	}{{name: "john", password: "mypassword1"}, {name: "alex", password: "mypassword2"}} {
+	}{{name: "john", password: "mypass1"}, {name: "alex", password: "mypass2"}} {
 		sshClientConfig := &ssh.ClientConfig{
 			User: user.name,
 			Auth: []ssh.AuthMethod{ssh.Password(user.password)},
@@ -121,7 +121,7 @@ func TestMultipleUsers(t *testing.T) {
 func TestWrongPassword(t *testing.T) {
 	rootCmd := RootCmd()
 	port := getAvailableTcpPort()
-	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypassword"})
+	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypass"})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -144,7 +144,7 @@ func TestWrongPassword(t *testing.T) {
 func TestAllowExecute(t *testing.T) {
 	rootCmd := RootCmd()
 	port := getAvailableTcpPort()
-	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypassword", "--allow-execute"})
+	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypass", "--allow-execute"})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -155,7 +155,7 @@ func TestAllowExecute(t *testing.T) {
 	waitTCPServer(port)
 	sshClientConfig := &ssh.ClientConfig{
 		User:            "john",
-		Auth:            []ssh.AuthMethod{ssh.Password("mypassword")},
+		Auth:            []ssh.AuthMethod{ssh.Password("mypass")},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
@@ -175,7 +175,7 @@ func TestAllowExecute(t *testing.T) {
 func TestAllowTcpipForward(t *testing.T) {
 	rootCmd := RootCmd()
 	port := getAvailableTcpPort()
-	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypassword", "--allow-tcpip-forward"})
+	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypass", "--allow-tcpip-forward"})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -186,7 +186,7 @@ func TestAllowTcpipForward(t *testing.T) {
 	waitTCPServer(port)
 	sshClientConfig := &ssh.ClientConfig{
 		User:            "john",
-		Auth:            []ssh.AuthMethod{ssh.Password("mypassword")},
+		Auth:            []ssh.AuthMethod{ssh.Password("mypass")},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
@@ -206,7 +206,7 @@ func TestAllowTcpipForward(t *testing.T) {
 func TestAllowStreamlocalForward(t *testing.T) {
 	rootCmd := RootCmd()
 	port := getAvailableTcpPort()
-	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypassword", "--allow-streamlocal-forward"})
+	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypass", "--allow-streamlocal-forward"})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -217,7 +217,7 @@ func TestAllowStreamlocalForward(t *testing.T) {
 	waitTCPServer(port)
 	sshClientConfig := &ssh.ClientConfig{
 		User:            "john",
-		Auth:            []ssh.AuthMethod{ssh.Password("mypassword")},
+		Auth:            []ssh.AuthMethod{ssh.Password("mypass")},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
@@ -237,7 +237,7 @@ func TestAllowStreamlocalForward(t *testing.T) {
 func TestAllowDirectTcpip(t *testing.T) {
 	rootCmd := RootCmd()
 	port := getAvailableTcpPort()
-	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypassword", "--allow-direct-tcpip"})
+	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypass", "--allow-direct-tcpip"})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -248,7 +248,7 @@ func TestAllowDirectTcpip(t *testing.T) {
 	waitTCPServer(port)
 	sshClientConfig := &ssh.ClientConfig{
 		User:            "john",
-		Auth:            []ssh.AuthMethod{ssh.Password("mypassword")},
+		Auth:            []ssh.AuthMethod{ssh.Password("mypass")},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
@@ -268,7 +268,7 @@ func TestAllowDirectTcpip(t *testing.T) {
 func TestAllowDirectStreamlocal(t *testing.T) {
 	rootCmd := RootCmd()
 	port := getAvailableTcpPort()
-	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypassword", "--allow-direct-streamlocal"})
+	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypass", "--allow-direct-streamlocal"})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -279,7 +279,7 @@ func TestAllowDirectStreamlocal(t *testing.T) {
 	waitTCPServer(port)
 	sshClientConfig := &ssh.ClientConfig{
 		User:            "john",
-		Auth:            []ssh.AuthMethod{ssh.Password("mypassword")},
+		Auth:            []ssh.AuthMethod{ssh.Password("mypass")},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
@@ -299,7 +299,7 @@ func TestAllowDirectStreamlocal(t *testing.T) {
 func TestAllowSftp(t *testing.T) {
 	rootCmd := RootCmd()
 	port := getAvailableTcpPort()
-	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypassword", "--allow-sftp"})
+	rootCmd.SetArgs([]string{"--port", strconv.Itoa(port), "--user", "john:mypass", "--allow-sftp"})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -310,7 +310,7 @@ func TestAllowSftp(t *testing.T) {
 	waitTCPServer(port)
 	sshClientConfig := &ssh.ClientConfig{
 		User:            "john",
-		Auth:            []ssh.AuthMethod{ssh.Password("mypassword")},
+		Auth:            []ssh.AuthMethod{ssh.Password("mypass")},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))

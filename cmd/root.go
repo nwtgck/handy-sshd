@@ -80,7 +80,7 @@ For example, specifying --allow-direct-tcpip and --allow-execute allows only the
 	rootCmd.PersistentFlags().StringVarP(&flag.sshUnixSocket, "unix-socket", "", "", "Unix domain socket to listen")
 	rootCmd.PersistentFlags().StringVarP(&flag.sshShell, "shell", "", "", "Shell")
 	//rootCmd.PersistentFlags().StringVar(&flag.dnsServer, "dns-server", "", "DNS server (e.g. 1.1.1.1:53)")
-	rootCmd.PersistentFlags().StringArrayVarP(&flag.sshUsers, "user", "u", nil, `SSH user name (e.g. "john:mypassword")`)
+	rootCmd.PersistentFlags().StringArrayVarP(&flag.sshUsers, "user", "u", nil, `SSH user name (e.g. "john:mypass")`)
 
 	// Permission flags
 	rootCmd.PersistentFlags().BoolVarP(&flag.allowTcpipForward, "allow-tcpip-forward", "", false, "client can use remote forwarding (ssh -R)")
@@ -132,7 +132,7 @@ func rootRunEWithExtra(cmd *cobra.Command, args []string, flag *flagType, allPer
 	}
 	if len(sshUsers) == 0 {
 		return fmt.Errorf(`No user specified
-e.g. --user "john:mypassword"
+e.g. --user "john:mypass"
 e.g. --user "john:"`)
 	}
 	// (base: https://gist.github.com/jpillora/b480fde82bff51a06238)
