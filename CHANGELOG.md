@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+## [0.3.0] - 2023-08-11
+### Added
+* Support Unix domain socket local port forwarding
+* Support Unix domain socket remote port forwarding
+
+### Fixed
+* Handle multiple global requests simultaneously
+
 ## [0.2.1] - 2023-08-09
 ### Changed
 * Update dependencies
@@ -20,6 +28,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 ### Added
 * Initial release
 
-[Unreleased]: https://github.com/nwtgck/handy-sshd/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/nwtgck/handy-sshd/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/nwtgck/handy-sshd/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/nwtgck/handy-sshd/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/nwtgck/handy-sshd/compare/v0.1.0...v0.2.0
