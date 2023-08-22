@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/creack/pty v1.1.18
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.3.1
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/sftp v1.13.6
