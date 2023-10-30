@@ -3,7 +3,7 @@ module github.com/nwtgck/handy-sshd
 go 1.20
 
 require (
-	github.com/creack/pty v1.1.18
+	github.com/creack/pty v1.1.20
 	github.com/google/uuid v1.4.0
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/pkg/errors v0.9.1
