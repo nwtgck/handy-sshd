@@ -6,8 +6,8 @@ Portable SSH Server
 ## Install on Ubuntu/Debian
 
 ```bash
-wget https://github.com/nwtgck/handy-sshd/releases/download/v0.4.0/handy-sshd-0.4.0-linux-amd64.deb
-sudo dpkg -i handy-sshd-0.4.0-linux-amd64.deb 
+wget https://github.com/nwtgck/handy-sshd/releases/download/v0.4.2/handy-sshd-0.4.2-linux-amd64.deb
+sudo dpkg -i handy-sshd-0.4.2-linux-amd64.deb 
 ```
 
 ## Install on Mac
