@@ -31,9 +31,11 @@ func (s *Server) createPty(shell string, connection ssh.Channel) (*os.File, erro
 			Status: 0,
 		}))
 		connection.Close()
-		_, err := sh.Process.Wait()
-		if err != nil {
-			s.Logger.Info("failed to exit shell", err)
+		if sh.Process != nil {
+			_, err := sh.Process.Wait()
+			if err != nil {
+				s.Logger.Info("failed to exit shell", err)
+			}
 		}
 		s.Logger.Info("session closed")
 	}
