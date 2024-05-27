@@ -5,7 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
-## [0.4.2] - 2023-04-05
+## [0.4.3] - 2024-05-27
+### Changed
+* Update dependencies
+
+### Fixed
+* Wait non-nil process when pty open failed
+
+## [0.4.2] - 2024-04-05
 ### Changed
 * Update dependencies
 
@@ -45,6 +52,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 * Initial release
 
 [Unreleased]: https://github.com/nwtgck/handy-sshd/compare/v0.4.2...HEAD
+[0.4.3]: https://github.com/nwtgck/handy-sshd/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/nwtgck/handy-sshd/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/nwtgck/handy-sshd/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/nwtgck/handy-sshd/compare/v0.3.0...v0.4.0
