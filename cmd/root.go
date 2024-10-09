@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"bufio"
 )
 
 type flagType struct {
@@ -21,6 +22,7 @@ type flagType struct {
 	sshUnixSocket string
 	sshShell      string
 	sshUsers      []string
+	sshAuthKeys   []string
 
 	allowTcpipForward       bool
 	allowDirectTcpip        bool
@@ -81,6 +83,7 @@ For example, specifying --allow-direct-tcpip and --allow-execute allows only the
 	rootCmd.PersistentFlags().StringVarP(&flag.sshShell, "shell", "", "", "Shell")
 	//rootCmd.PersistentFlags().StringVar(&flag.dnsServer, "dns-server", "", "DNS server (e.g. 1.1.1.1:53)")
 	rootCmd.PersistentFlags().StringArrayVarP(&flag.sshUsers, "user", "u", nil, `SSH user name (e.g. "john:mypass")`)
+	rootCmd.PersistentFlags().StringArrayVarP(&flag.sshAuthKeys, "keys", "k", nil, "SSH authorized keys")
 
 	// Permission flags
 	rootCmd.PersistentFlags().BoolVarP(&flag.allowTcpipForward, "allow-tcpip-forward", "", false, "client can use remote forwarding (ssh -R)")
@@ -130,13 +133,28 @@ func rootRunEWithExtra(cmd *cobra.Command, args []string, flag *flagType, allPer
 		}
 		sshUsers = append(sshUsers, sshUser{name: splits[0], password: splits[1]})
 	}
-	if len(sshUsers) == 0 {
-		return fmt.Errorf(`No user specified
-e.g. --user "john:mypass"
-e.g. --user "john:"`)
+
+	authorizedKeys := make(map[string]bool)
+	for _, k := range flag.sshAuthKeys {
+		hand, err := os.Open(k)
+		if err != nil { continue }
+		scanner := bufio.NewScanner(hand)
+		for scanner.Scan() {
+			key := scanner.Text()
+			pub, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
+			if err != nil { continue }
+			authorizedKeys[string(ssh.FingerprintSHA256(pub))] = true
+		}
 	}
+
 	// (base: https://gist.github.com/jpillora/b480fde82bff51a06238)
 	sshConfig := &ssh.ServerConfig{
+        PublicKeyCallback: func(metadata ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+            if authorizedKeys[string(ssh.FingerprintSHA256(key))] {
+                return nil, nil
+            }
+            return nil, fmt.Errorf("public key rejected for %q", metadata.User())
+        },
 		//Define a function to run when a client attempts a password login
 		PasswordCallback: func(metadata ssh.ConnMetadata, pass []byte) (*ssh.Permissions, error) {
 			for _, user := range sshUsers {
