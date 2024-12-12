@@ -10,7 +10,7 @@ require (
 	github.com/pkg/sftp v1.13.7
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0
-	golang.org/x/crypto v0.30.0
+	golang.org/x/crypto v0.31.0
 	golang.org/x/exp v0.0.0-20240525044651-4c93da0ed11d
 )
 
